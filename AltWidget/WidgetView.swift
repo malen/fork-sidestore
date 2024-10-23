@@ -18,93 +18,187 @@ struct WidgetView : View
     var entry: AppEntry
     
     var body: some View {
-        Group {
-            if let app = self.entry.app
-            {
-                let daysRemaining = app.expirationDate.numberOfCalendarDays(since: self.entry.date)
-                    
-                GeometryReader { (geometry) in
-                    Group {
-                        VStack(alignment: .leading) {
-                            VStack(alignment: .leading, spacing: 5) {
-                                let imageHeight = geometry.size.height * 0.4
-                                
-                                Image(uiImage: app.icon ?? UIImage())
-                                    .resizable()
-                                    .aspectRatio(CGSize(width: 1, height: 1), contentMode: .fit)
-                                    .frame(height: imageHeight)
-                                    .mask(RoundedRectangle(cornerRadius: imageHeight / 5.0, style: .continuous))
-                                
-                                Text(app.name.uppercased())
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                            }
-                            .fixedSize(horizontal: false, vertical: true)
-                            
-                            Spacer(minLength: 0)
-                            
-                            HStack(alignment: .center) {
-                                let expirationText: Text = {
-                                    switch daysRemaining
-                                    {
-                                    case ..<0: return Text("Expired")
-                                    case 1: return Text("1 day")
-                                    default: return Text("\(daysRemaining) days")
-                                    }
-                                }()
-                                
-                                (
-                                    Text("Expires in\n")
-                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                                        .foregroundColor(Color.white.opacity(0.45)) +
+
+        if #available(iOS 17.0, *) {
+            Group {
+                if let app = self.entry.app
+                {
+                    let daysRemaining = app.expirationDate.numberOfCalendarDays(since: self.entry.date)
+                        
+                    GeometryReader { (geometry) in
+                        Group {
+                            VStack(alignment: .leading) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    let imageHeight = geometry.size.height * 0.4
                                     
-                                    expirationText
-                                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    Image(uiImage: app.icon ?? UIImage())
+                                        .resizable()
+                                        .aspectRatio(CGSize(width: 1, height: 1), contentMode: .fit)
+                                        .frame(height: imageHeight)
+                                        .mask(RoundedRectangle(cornerRadius: imageHeight / 5.0, style: .continuous))
+                                    
+                                    Text(app.name.uppercased())
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
                                         .foregroundColor(.white)
-                                )
-                                .lineLimit(2)
-                                .lineSpacing(1.0)
-                                .minimumScaleFactor(0.5)
-                                
-                                Spacer()
-                                
-                                if daysRemaining >= 0
-                                {
-                                    Countdown(startDate: app.refreshedDate,
-                                              endDate: app.expirationDate,
-                                              currentDate: self.entry.date)
-                                        .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                        .foregroundColor(Color.white)
-                                        .opacity(0.8)
-                                        .fixedSize(horizontal: true, vertical: false)
-                                        .offset(x: 5)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
                                 }
+                                .fixedSize(horizontal: false, vertical: true)
+                                
+                                Spacer(minLength: 0)
+                                
+                                HStack(alignment: .center) {
+                                    let expirationText: Text = {
+                                        switch daysRemaining
+                                        {
+                                        case ..<0: return Text("Expired")
+                                        case 1: return Text("1 day")
+                                        default: return Text("\(daysRemaining) days")
+                                        }
+                                    }()
+                                    
+                                    (
+                                        Text("Expires in\n")
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color.white.opacity(0.45)) +
+                                        
+                                        expirationText
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.white)
+                                    )
+                                    .lineLimit(2)
+                                    .lineSpacing(1.0)
+                                    .minimumScaleFactor(0.5)
+                                    
+                                    Spacer()
+                                    
+                                    if daysRemaining >= 0
+                                    {
+                                        Countdown(startDate: app.refreshedDate,
+                                                endDate: app.expirationDate,
+                                                currentDate: self.entry.date)
+                                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color.white)
+                                            .opacity(0.8)
+                                            .fixedSize(horizontal: true, vertical: false)
+                                            .offset(x: 5)
+                                    }
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
                             }
-                            .fixedSize(horizontal: false, vertical: true)
+                            .padding()
                         }
-                        .padding()
                     }
                 }
+                else
+                {
+                    VStack {
+                        // Put conditional inside VStack, or else an empty view will be returned
+                        // if isPlaceholder == false, which messes up layout.
+                        if !entry.isPlaceholder
+                        {
+                            Text("App Not Found")
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color.white.opacity(0.4))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
-            else
-            {
-                VStack {
-                    // Put conditional inside VStack, or else an empty view will be returned
-                    // if isPlaceholder == false, which messes up layout.
-                    if !entry.isPlaceholder
-                    {
-                        Text("App Not Found")
-                            .font(.system(.body, design: .rounded))
-                            .fontWeight(.semibold)
-                            .foregroundColor(Color.white.opacity(0.4))
+            .containerBackground(Color.blue, for: .widget) // 设置小组件的背景
+            .cornerRadius(10) // 可选：设置圆角
+            .padding() // 可选：设置内边距
+            
+        } else {
+            Group {
+                if let app = self.entry.app
+                {
+                    let daysRemaining = app.expirationDate.numberOfCalendarDays(since: self.entry.date)
+                        
+                    GeometryReader { (geometry) in
+                        Group {
+                            VStack(alignment: .leading) {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    let imageHeight = geometry.size.height * 0.4
+                                    
+                                    Image(uiImage: app.icon ?? UIImage())
+                                        .resizable()
+                                        .aspectRatio(CGSize(width: 1, height: 1), contentMode: .fit)
+                                        .frame(height: imageHeight)
+                                        .mask(RoundedRectangle(cornerRadius: imageHeight / 5.0, style: .continuous))
+                                    
+                                    Text(app.name.uppercased())
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.white)
+                                        .lineLimit(1)
+                                        .minimumScaleFactor(0.5)
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
+                                
+                                Spacer(minLength: 0)
+                                
+                                HStack(alignment: .center) {
+                                    let expirationText: Text = {
+                                        switch daysRemaining
+                                        {
+                                        case ..<0: return Text("Expired")
+                                        case 1: return Text("1 day")
+                                        default: return Text("\(daysRemaining) days")
+                                        }
+                                    }()
+                                    
+                                    (
+                                        Text("Expires in\n")
+                                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color.white.opacity(0.45)) +
+                                        
+                                        expirationText
+                                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                            .foregroundColor(.white)
+                                    )
+                                    .lineLimit(2)
+                                    .lineSpacing(1.0)
+                                    .minimumScaleFactor(0.5)
+                                    
+                                    Spacer()
+                                    
+                                    if daysRemaining >= 0
+                                    {
+                                        Countdown(startDate: app.refreshedDate,
+                                                endDate: app.expirationDate,
+                                                currentDate: self.entry.date)
+                                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                            .foregroundColor(Color.white)
+                                            .opacity(0.8)
+                                            .fixedSize(horizontal: true, vertical: false)
+                                            .offset(x: 5)
+                                    }
+                                }
+                                .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding()
+                        }
                     }
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                else
+                {
+                    VStack {
+                        // Put conditional inside VStack, or else an empty view will be returned
+                        // if isPlaceholder == false, which messes up layout.
+                        if !entry.isPlaceholder
+                        {
+                            Text("App Not Found")
+                                .font(.system(.body, design: .rounded))
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color.white.opacity(0.4))
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
+            .background(backgroundView(icon: entry.app?.icon, tintColor: entry.app?.tintColor))
         }
-        .background(backgroundView(icon: entry.app?.icon, tintColor: entry.app?.tintColor))
     }
 }
 
