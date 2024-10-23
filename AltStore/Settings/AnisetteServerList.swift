@@ -13,6 +13,7 @@ import AltStoreCore
 typealias SUIButton = SwiftUI.Button
 
 // MARK: - AnisetteServerData
+// Codable - Swift内置协议，结合了Encodable 和 Decodable 两个协议，可以实现将对象编码为JSON数据，或者从JSON数据解码为对象。
 struct AnisetteServerData: Codable {
     let servers: [Server]
 }
@@ -24,14 +25,17 @@ struct Server: Codable {
 }
 
 class AnisetteViewModel: ObservableObject {
+    // @Published 属性包装器，它使得任何对这个列表的修改都会自动通知观察者，从而更新相关的 UI 元素。
     @Published var selected: String = ""
 
     @Published var source: String = "https://servers.sidestore.io/servers.json"
     @Published var servers: [Server] = []
     
-    func getListOfServers() {
+    func getListOfServers() async {
         guard let url = URL(string: source) else { return }
-        URLSession.shared.dataTask(with: url) { data, response, error in
+        // 这段代码的整体作用是发起一个网络请求，获取 JSON 数据，解码为 AnisetteServerData 对象，
+        // 并将解码后的服务器数据更新到 UI 中。如果在请求或解码过程中发生错误，程序会优雅地处理这些错误。
+        await URLSession.shared.dataTask(with: url) { data, response, error in
             if let error = error {
                 return
             }
@@ -39,7 +43,10 @@ class AnisetteViewModel: ObservableObject {
                 do {
                     let decoder = Foundation.JSONDecoder()
                     let servers = try decoder.decode(AnisetteServerData.self, from: data)
+
+                    // 在主线程执行UI更新操作
                     DispatchQueue.main.async {
+                        // 将反序列化得到的AnisetteServerData 中的servers 赋值给 viewModel.servers
                         self.servers = servers.servers
                     }
                 } catch {
@@ -47,25 +54,38 @@ class AnisetteViewModel: ObservableObject {
                     print("Failed to decode JSON: \(error)")
                 }
             }
-        }.resume()
+        }.resume() // 启动数据任务
     }
 }
 
+
+// 遵循View 协议的结构体，用于呈现 AnisetteServers 视图。
 struct AnisetteServers: View {
+    // 使用 @Environment 属性包装器来访问视图的环境值，具体是 presentationMode。
+    // 这个值用于控制视图的显示状态，比如关闭当前视图或返回上一个视图。
     @Environment(\.presentationMode) var presentationMode
+    // 使用 @StateObject 属性包装器来创建一个状态对象 viewModel
+    // @StateObject 用于管理视图模型的生命周期，并在视图重新渲染时保持状态。
     @StateObject var viewModel: AnisetteViewModel = AnisetteViewModel()
+    // 使用 @State 属性包装器定义一个可选的字符串变量 selected，初始化为 nil。这个变量可能用于跟踪用户在视图中选择的项。
     @State var selected: String? = nil
     var errorCallback: () -> ()
 
+   // some View隐藏具体的返回类型
     var body: some View {
         ZStack {
             Color(UIColor.systemBackground)
                 .ignoresSafeArea()
                 .onAppear {
-                    viewModel.getListOfServers()
+                    Task {
+                        await viewModel.getListOfServers()
+                    }
                 }
             VStack {
+                // if #available(iOS 16.0, *) 是用来检查操作系统版本的条件语句。用于确保某段代码只在特定的操作系统版本或更高的版本上执行
                 if #available(iOS 16.0, *) {
+                    // $ 符号 用于将 SwiftUI 中的 @State、@Binding 或 @Published 属性转换为 Binding 类型，
+                    // 以便视图可以进行双向绑定，允许数据和 UI 同步更新
                     SwiftUI.List($viewModel.servers, id: \.address, selection: $selected) { server in
                         HStack {
                             VStack(alignment: .leading) {
@@ -129,11 +149,14 @@ struct AnisetteServers: View {
                         .shadow(color: Color.black.opacity(0.2), radius: 5, x: 0, y: 5)
                         .onChange(of: viewModel.source) { newValue in
                             UserDefaults.standard.menuAnisetteList = newValue
-                            viewModel.getListOfServers()
+                            Task {
+                                await viewModel.getListOfServers()
+                            }
                         }
 
                     HStack(spacing: 16) {
                         SUIButton(action: {
+                            // 关闭当前视图并返回上一个视图。
                             presentationMode.wrappedValue.dismiss()
                         }) {
                             Text("Back")
@@ -147,7 +170,9 @@ struct AnisetteServers: View {
                         .shadow(color: Color.accentColor.opacity(0.4), radius: 10, x: 0, y: 5)
 
                         SUIButton(action: {
-                            viewModel.getListOfServers()
+                            Task {
+                                await viewModel.getListOfServers()
+                            }
                         }) {
                             Text("Refresh Servers")
                                 .fontWeight(.semibold)
@@ -168,6 +193,7 @@ struct AnisetteServers: View {
                         #endif
                         print("Cleared adi.pb from keychain")
                         errorCallback()
+                        // 关闭当前视图并返回上一个视图。
                         presentationMode.wrappedValue.dismiss()
                     }) {
                         Text("Reset adi.pb")
@@ -184,7 +210,9 @@ struct AnisetteServers: View {
                 .padding(.bottom)
             }
         }
+        // 这里的 navigationBarHidden 设置为 true，用于隐藏导航栏。
         .navigationBarHidden(true)
+        // 这里的 navigationTitle 设置为空字符串，用于隐藏导航栏标题。
         .navigationTitle("")
     }
 }
