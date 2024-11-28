@@ -342,6 +342,7 @@ extension AppDelegate
         
         guard UserDefaults.standard.isBackgroundRefreshEnabled else { return }
         
+        // DatabaseManager.shared 表示全局唯一实例
         DatabaseManager.shared.persistentContainer.performBackgroundTask { (context) in
             let installedApps = InstalledApp.fetchAppsForBackgroundRefresh(in: context)
             AppManager.shared.backgroundRefresh(installedApps, completionHandler: refreshAppsCompletionHandler)
